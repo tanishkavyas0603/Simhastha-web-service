@@ -1,4 +1,44 @@
 # Created by venv; see https://docs.python.org/3/library/venv.html
 *
 root.env
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ---- Environment & Secrets ----
+.env
+*.env
+*.secret
+secrets.json
+
+# ---- Databases ----
+*.db
+*.sqlite3
+
+# ---- Logs ----
+*.log
+
+# ---- Virtual Environments ----
+venv/
+env/
+.venv/
+
+# ---- OS Generated ----
+.DS_Store
+Thumbs.db
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+
+# ---- Node / Front-end (if any assets) ----
+node_modules/
+dist/
+build/
+
+# ---- Other ----
+*.bak
+
 
