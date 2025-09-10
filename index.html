@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simhastha Milaap — Lost & Found</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="bg-yellow-50">
+
+  <!-- Header -->
+  <header class="bg-orange-500 text-white shadow">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+        <i class="fa-solid fa-hands-helping"></i> Simhastha Milaap
+      </h1>
+      <div class="text-right">
+        <p class="text-sm md:text-base font-semibold">Ujjain Mahakumbh 2028</p>
+        <p class="text-xs">Smart Lost & Found System</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Assistance Section -->
+  <section class="max-w-3xl mx-auto text-center bg-white rounded-xl shadow-md mt-6 p-8">
+    <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Need Assistance?</h2>
+    <p class="text-gray-600 mb-6">Report a missing person or a lost/found item to our system. We'll use our smart matching technology to help you reconnect.</p>
+    <div class="flex flex-col md:flex-row justify-center gap-4">
+      <button onclick="startReport('person')" class="bg-orange-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-orange-600 flex items-center justify-center">
+        <i class="fas fa-user mr-2"></i> Report Missing/Found Person
+      </button>
+      <button onclick="startReport('item')" class="bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-600 flex items-center justify-center">
+        <i class="fas fa-box mr-2"></i> Report Lost/Found Item
+      </button>
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <div class="max-w-6xl mx-auto mt-8 px-4">
+    <div class="border-b border-gray-300 flex space-x-6">
+      <button class="text-orange-600 font-bold border-b-2 border-orange-600 py-2">My Reports</button>
+    </div>
+
+    <!-- My Reports Section -->
+    <section class="mt-6">
+      <div id="my-reports-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <p class="text-gray-500 text-center py-8 col-span-full">No reports submitted yet</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Report Modal -->
+  <div id="reportModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-2xl w-11/12 md:max-w-2xl mx-auto p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 id="modalTitle" class="text-xl font-bold">Create Report</h3>
+        <button onclick="closeModal('reportModal')" class="text-gray-500 hover:text-gray-700">
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+
+      <form id="universal-form" class="space-y-6">
+        <!-- Step 1 -->
+        <div id="step-1" class="space-y-3">
+          <p class="font-semibold">What do you want to report?</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" onclick="setReportType('missing')" class="bg-gray-200 py-2 rounded">Missing / Lost</button>
+            <button type="button" onclick="setReportType('found')" class="bg-gray-200 py-2 rounded">Found</button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="step-2" class="space-y-4 hidden">
+          <div id="person-fields" class="space-y-3 hidden">
+            <input name="name" class="w-full border rounded p-2" placeholder="Full Name" />
+            <input name="age" type="number" class="w-full border rounded p-2" placeholder="Age" />
+            <select name="gender" class="w-full border rounded p-2">
+              <option value="">Gender</option>
+              <option>Male</option><option>Female</option><option>Other</option>
+            </select>
+            <textarea name="description" class="w-full border rounded p-2" placeholder="Description (clothes, marks, etc.)"></textarea>
+          </div>
+
+          <div id="item-fields" class="space-y-3 hidden">
+            <input name="category" class="w-full border rounded p-2" placeholder="Category (e.g., Phone, Bag)" />
+            <input name="color" class="w-full border rounded p-2" placeholder="Color" />
+            <input name="brand" class="w-full border rounded p-2" placeholder="Brand / Model (optional)" />
+            <textarea name="description" class="w-full border rounded p-2" placeholder="Description (stickers, case, etc.)"></textarea>
+          </div>
+
+          <input name="location" class="w-full border rounded p-2" placeholder="Location (last seen / found)" />
+        </div>
+
+        <!-- Step 3 -->
+        <div id="step-3" class="space-y-3 hidden">
+          <div id="photo-upload-area" class="border-2 border-dashed rounded p-6 text-center">
+            <p class="text-gray-600 mb-2"><i class="fa-solid fa-camera"></i> Upload a photo (optional)</p>
+            <input id="photo-input" type="file" accept="image/*" />
+          </div>
+          <div id="photo-preview-area" class="hidden">
+            <img id="photo-preview" class="w-48 h-48 object-cover rounded border" />
+            <div class="mt-2">
+              <button type="button" onclick="removePhoto()" class="text-sm text-red-600">Remove photo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div id="step-4" class="space-y-3 hidden">
+          <input name="contact" class="w-full border rounded p-2" placeholder="Your WhatsApp number e.g. +91XXXXXXXXXX" />
+        </div>
+
+        <!-- Hidden -->
+        <input type="hidden" name="report_type" id="report_type_hidden" />
+        <input type="hidden" name="entity_type" id="entity_type_hidden" />
+
+        <div class="flex justify-between pt-4">
+          <button type="button" id="prevBtn" class="bg-gray-200 px-4 py-2 rounded hidden" onclick="prevStep()">Back</button>
+          <div class="flex gap-2 ml-auto">
+            <button type="button" id="nextBtn" class="bg-gray-200 px-4 py-2 rounded" onclick="nextStep()">Next</button>
+            <button type="submit" id="submitBtn" class="bg-orange-500 text-white px-4 py-2 rounded hidden">Submit</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="successModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-2xl w-11/12 md:max-w-lg mx-auto p-6">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-xl font-bold">Report Submitted</h3>
+        <button onclick="closeModal('successModal')" class="text-gray-500 hover:text-gray-700">
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+      <div id="success-details" class="text-gray-700 text-sm"></div>
+      <div class="mt-4 text-right">
+        <button onclick="closeModal('successModal')" class="bg-orange-500 text-white px-4 py-2 rounded">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    let currentStep = 1;
+    let entityType = "";
+
+    function startReport(type) {
+      entityType = type;
+      document.getElementById("entity_type_hidden").value = type;
+      document.getElementById("reportModal").classList.remove("hidden");
+      showStep(1);
+    }
+
+    function setReportType(type) {
+      document.getElementById("report_type_hidden").value = type;
+      showStep(2);
+      if (entityType === "person") {
+        document.getElementById("person-fields").classList.remove("hidden");
+        document.getElementById("item-fields").classList.add("hidden");
+      } else {
+        document.getElementById("item-fields").classList.remove("hidden");
+        document.getElementById("person-fields").classList.add("hidden");
+      }
+    }
+
+    function showStep(step) {
+      currentStep = step;
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById("step-" + i).classList.add("hidden");
+      }
+      document.getElementById("step-" + step).classList.remove("hidden");
+
+      document.getElementById("prevBtn").classList.toggle("hidden", step === 1);
+      document.getElementById("nextBtn").classList.toggle("hidden", step === 4);
+      document.getElementById("submitBtn").classList.toggle("hidden", step !== 4);
+    }
+
+    function nextStep() {
+      if (currentStep < 4) showStep(currentStep + 1);
+    }
+    function prevStep() {
+      if (currentStep > 1) showStep(currentStep - 1);
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+
+    // Photo upload preview
+    document.getElementById("photo-input").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          document.getElementById("photo-preview").src = reader.result;
+          document.getElementById("photo-preview-area").classList.remove("hidden");
+          document.getElementById("photo-upload-area").classList.add("hidden");
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function removePhoto() {
+      document.getElementById("photo-input").value = "";
+      document.getElementById("photo-preview-area").classList.add("hidden");
+      document.getElementById("photo-upload-area").classList.remove("hidden");
+    }
+
+    // Handle form submit
+    document.getElementById("universal-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(this).entries());
+
+      // Save to localStorage (simulate backend)
+      let reports = JSON.parse(localStorage.getItem("myReports") || "[]");
+      data.id = Date.now();
+      reports.push(data);
+      localStorage.setItem("myReports", JSON.stringify(reports));
+
+      closeModal("reportModal");
+      document.getElementById("success-details").innerHTML = `
+        <p><b>Type:</b> ${data.entity_type} (${data.report_type})</p>
+        <p><b>Location:</b> ${data.location}</p>
+        <p><b>Contact:</b> ${data.contact}</p>
+      `;
+      document.getElementById("successModal").classList.remove("hidden");
+      loadMyReports();
+      this.reset();
+    });
+
+    // Load user reports
+    function loadMyReports() {
+      const container = document.getElementById("my-reports-container");
+      let reports = JSON.parse(localStorage.getItem("myReports") || "[]");
+
+      if (!reports.length) {
+        container.innerHTML = `<p class="text-gray-500 text-center py-8 col-span-full">No reports submitted yet</p>`;
+        return;
+      }
+
+      container.innerHTML = reports.map(r => `
+        <div class="bg-white rounded-lg shadow p-4 relative">
+          <span class="absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded ${r.report_type === 'found' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+            ${r.report_type.toUpperCase()}
+          </span>
+          <h3 class="font-bold text-lg mb-2">${r.entity_type === "person" ? r.name || "Unnamed Person" : r.category || "Item"}</h3>
+          <p class="text-gray-600 text-sm mb-1">${r.description || "No description provided"}</p>
+          <p class="text-gray-500 text-xs mb-1"><i class="fa-solid fa-location-dot"></i> ${r.location}</p>
+          <p class="text-gray-500 text-xs"><i class="fa-brands fa-whatsapp"></i> ${r.contact}</p>
+        </div>
+      `).join("");
+    }
+
+    loadMyReports();
+  </script>
+
+</body>
+</html>

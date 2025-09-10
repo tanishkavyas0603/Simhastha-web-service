@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Help Center — Volunteers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .btn{background:#e5e7eb}
+    .btn:hover{background:#d1d5db}
+    .btn-primary{background:#2563eb;color:#fff}
+    .btn-primary:hover{background:#1d4ed8}
+  </style>
+</head>
+<body class="bg-gray-50">
+  <header class="bg-white shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <h1 class="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-3">
+        <i class="fa-solid fa-shield-heart text-blue-600"></i> Help Center (Volunteers)
+      </h1>
+      <a href="/" class="btn px-4 py-2 rounded-lg"><i class="fa-solid fa-home mr-2"></i> Back to Home</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <!-- Stats -->
+    <section class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-700 mb-3">Live Stats</h2>
+      <div id="stats" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+    </section>
+
+    <!-- Tabs -->
+    <section>
+      <h2 class="text-2xl font-bold text-gray-700 mb-4" id="reports-title">Reports</h2>
+      <div class="bg-white rounded-xl shadow-md p-6">
+        <div class="flex border-b border-gray-200 mb-4 overflow-x-auto">
+          <button id="tab-missing-persons" onclick="showTab('missing-persons')" class="py-2 px-4 font-semibold border-b-2 border-blue-500 text-blue-500">Missing Persons</button>
+          <button id="tab-found-persons" onclick="showTab('found-persons')" class="py-2 px-4 font-semibold text-gray-500">Found Persons</button>
+          <button id="tab-lost-items" onclick="showTab('lost-items')" class="py-2 px-4 font-semibold text-gray-500">Lost Items</button>
+          <button id="tab-found-items" onclick="showTab('found-items')" class="py-2 px-4 font-semibold text-gray-500">Found Items</button>
+          <button id="tab-with-photos" onclick="showTab('with-photos')" class="py-2 px-4 font-semibold text-gray-500">Reports with Photos</button>
+          <button id="tab-notifications" onclick="showTab('notifications')" class="py-2 px-4 font-semibold text-gray-500">Notifications</button>
+        </div>
+        
+        <div id="reports-container"></div>
+        <div id="notifications-container" class="hidden"></div>
+        <div id="photos-container" class="hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Photo Upload Modal -->
+  <div id="photoUploadModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center hidden">
+    <div class="bg-white rounded-lg shadow-2xl w-11/12 md:max-w-md mx-auto p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-bold">Upload Photo</h3>
+        <button onclick="closeModal('photoUploadModal')" class="text-gray-500 hover:text-gray-700">
+          <i class="fa-solid fa-times"></i>
+        </button>
+      </div>
+      <input type="hidden" id="photoReportId">
+      <input type="hidden" id="photoReportType">
+      <input id="photoFile" type="file" accept="image/*" class="w-full border rounded p-2 mb-3" />
+      <div class="text-right">
+        <button onclick="uploadPhotoNow()" class="btn-primary px-4 py-2 rounded">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentTab = 'missing-persons';
+
+    async function fetchJSON(url, opts){ const res = await fetch(url, opts); return res.json(); }
+
+    async function loadStats(){
+      try{
+        const s = await fetchJSON('/stats');
+        const wrap = document.getElementById('stats');
+        wrap.innerHTML = `
+          <div class="bg-white p-3 rounded shadow"><div class="text-gray-500 text-sm">Missing Persons</div><div class="text-xl font-bold">${s.persons.missing.active_count}/${s.persons.missing.total_count}</div></div>
+          <div class="bg-white p-3 rounded shadow"><div class="text-gray-500 text-sm">Found Persons</div><div class="text-xl font-bold">${s.persons.found.active_count}/${s.persons.found.total_count}</div></div>
+          <div class="bg-white p-3 rounded shadow"><div class="text-gray-500 text-sm">Lost Items</div><div class="text-xl font-bold">${s.items.lost.active_count}/${s.items.lost.total_count}</div></div>
+          <div class="bg-white p-3 rounded shadow"><div class="text-gray-500 text-sm">Found Items</div><div class="text-xl font-bold">${s.items.found.active_count}/${s.items.found.total_count}</div></div>
+        `;
+      }catch(e){ console.error('Stats error', e); }
+    }
+
+    function showTab(tab){
+      currentTab = tab;
+      document.getElementById('reports-container').classList.remove('hidden');
+      document.getElementById('notifications-container').classList.add('hidden');
+      document.getElementById('photos-container').classList.add('hidden');
+      if(tab === 'notifications'){
+        document.getElementById('reports-container').classList.add('hidden');
+        document.getElementById('notifications-container').classList.remove('hidden');
+        loadNotifications();
+        return;
+      }
+      if(tab === 'with-photos'){
+        document.getElementById('reports-container').classList.add('hidden');
+        document.getElementById('photos-container').classList.remove('hidden');
+        loadReportsWithPhotos();
+        return;
+      }
+      loadReports();
+    }
+
+    async function loadReports(){
+      try{
+        let url = '';
+        if(currentTab === 'missing-persons') url = '/get_persons?type=missing';
+        else if(currentTab === 'found-persons') url = '/get_persons?type=found';
+        else if(currentTab === 'lost-items') url = '/get_items?type=lost';
+        else if(currentTab === 'found-items') url = '/get_items?type=found';
+
+        const reports = await fetchJSON(url);
+        const container = document.getElementById('reports-container');
+        if(!Array.isArray(reports) || reports.length === 0){
+          container.innerHTML = '<p class="text-center text-gray-500 py-8">No data</p>';
+          return;
+        }
+        let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+        reports.forEach(report=>{
+          const reportDate = new Date(report.created_at).toLocaleString('en-IN');
+          if(report.name){ // person
+            html += `
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <h3 class="font-bold text-lg">${report.name} (${report.age || 'N/A'})</h3>
+                    <p class="text-gray-600">${report.description || 'No description provided'}</p>
+                    <p class="text-sm text-gray-500"><i class="fas fa-map-marker-alt mr-1"></i> ${report.location}</p>
+                    <p class="text-sm text-gray-500"><i class="fas fa-phone mr-1"></i> ${report.contact}</p>
+                    <p class="text-xs text-gray-400">Reported on: ${reportDate}</p>
+                    <p class="text-xs text-gray-400">ID: ${report._id}</p>
+                  </div>
+                  <div class="flex flex-col gap-2 ml-4">
+                    <span class="px-2 py-1 rounded text-xs font-semibold ${report.report_type === 'missing' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${report.report_type.toUpperCase()}</span>
+                    <button onclick="initiateResolution('${report._id}', 'person')" class="bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded">Mark Resolved</button>
+                    <button onclick="showPhotoUpload('${report._id}', 'person')" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs py-1 px-2 rounded">Upload Photo</button>
+                    ${report.has_photos ? `<button onclick="viewPhotos('${report._id}')" class="bg-purple-500 hover:bg-purple-600 text-white text-xs py-1 px-2 rounded">View Photos</button>` : ''}
+                    <button onclick="sendReportNotification('${report._id}', 'person')" class="bg-teal-500 hover:bg-teal-600 text-white text-xs py-1 px-2 rounded">Notify</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else { // item
+            html += `
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <h3 class="font-bold text-lg">${report.category} (${report.color})</h3>
+                    <p class="text-gray-600">${report.description || 'No description provided'}</p>
+                    <p class="text-sm text-gray-500"><i class="fas fa-map-marker-alt mr-1"></i> ${report.location}</p>
+                    <p class="text-sm text-gray-500"><i class="fas fa-phone mr-1"></i> ${report.contact}</p>
+                    <p class="text-xs text-gray-400">Reported on: ${reportDate}</p>
+                    <p class="text-xs text-gray-400">ID: ${report._id}</p>
+                  </div>
+                  <div class="flex flex-col gap-2 ml-4">
+                    <span class="px-2 py-1 rounded text-xs font-semibold ${report.report_type === 'lost' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'}">${report.report_type.toUpperCase()}</span>
+                    <button onclick="initiateResolution('${report._id}', 'item')" class="bg-blue-500 hover:bg-blue-600 text-white text-xs py-1 px-2 rounded">Mark Resolved</button>
+                    <button onclick="showPhotoUpload('${report._id}', 'item')" class="bg-indigo-500 hover:bg-indigo-600 text-white text-xs py-1 px-2 rounded">Upload Photo</button>
+                    ${report.has_photos ? `<button onclick="viewPhotos('${report._id}')" class="bg-purple-500 hover:bg-purple-600 text-white text-xs py-1 px-2 rounded">View Photos</button>` : ''}
+                    <button onclick="sendReportNotification('${report._id}', 'item')" class="bg-teal-500 hover:bg-teal-600 text-white text-xs py-1 px-2 rounded">Notify</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      }catch(err){
+        console.error('Error loading reports:', err);
+        document.getElementById('reports-container').innerHTML = '<p class="text-center text-red-500 py-8">Error loading reports</p>';
+      }
+    }
+
+    async function loadNotifications(){
+      try{
+        const list = await fetchJSON('/get-notifications?limit=50');
+        const div = document.getElementById('notifications-container');
+        if(list.length === 0){ div.innerHTML = '<p class="text-center text-gray-500 py-8">No notifications yet</p>'; return; }
+        div.innerHTML = list.map(n => `
+          <div class="bg-white border rounded p-3 mb-2">
+            <div class="flex justify-between">
+              <div>
+                <div class="text-sm text-gray-500">${n.type} • ${n.status}</div>
+                <div class="text-xs text-gray-400">${n.sent_at || n.received_at || ''}</div>
+              </div>
+              <div class="text-xs text-gray-600">${n.contact_number || ''}</div>
+            </div>
+            <pre class="whitespace-pre-wrap text-xs mt-2 text-gray-700">${n.message || ''}</pre>
+          </div>
+        `).join('');
+      }catch(e){
+        console.error(e);
+        document.getElementById('notifications-container').innerHTML = '<p class="text-center text-red-500 py-8">Error loading notifications</p>';
+      }
+    }
+
+    async function loadReportsWithPhotos(){
+      try{
+        const arr = await fetchJSON('/reports-with-photos');
+        const div = document.getElementById('photos-container');
+        if(arr.length === 0){ div.innerHTML = '<p class="text-center text-gray-500 py-8">No photo reports yet</p>'; return; }
+        let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+        for (const rpt of arr){
+          const photos = await fetchJSON(`/get-photos/${rpt._id}`);
+          const imgs = photos.map(p=> `<img class="w-full h-48 object-cover rounded" src="data:image/jpeg;base64,${p.image_data}"/>`).join('');
+          const heading = rpt.type === 'person' ? `${rpt.name} (${rpt.age || 'N/A'})` : `${rpt.category} (${rpt.color || 'N/A'})`;
+          html += `
+            <div class="border rounded p-3 bg-white">
+              <div class="font-bold mb-1">${heading}</div>
+              <div class="grid grid-cols-2 gap-2">${imgs}</div>
+            </div>
+          `;
+        }
+        html += '</div>';
+        div.innerHTML = html;
+      }catch(e){
+        console.error('photos error', e);
+        document.getElementById('photos-container').innerHTML = '<p class="text-center text-red-500 py-8">Error loading photos</p>';
+      }
+    }
+
+    async function initiateResolution(id, type){
+      if(!confirm('Mark this report as resolved?')) return;
+      try{
+        const res = await fetch('/resolve-report', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({report_id:id, report_type:type})
+        });
+        const result = await res.json();
+        if(res.ok){ alert('Marked resolved'); loadReports(); loadStats(); }
+        else{ alert(result.error || 'Failed'); }
+      }catch(e){ console.error(e); alert('Error'); }
+    }
+
+    function showPhotoUpload(id, type){
+      document.getElementById('photoReportId').value = id;
+      document.getElementById('photoReportType').value = type;
+      openModal('photoUploadModal');
+    }
+    async function uploadPhotoNow(){
+      const id = document.getElementById('photoReportId').value;
+      const type = document.getElementById('photoReportType').value;
+      const file = document.getElementById('photoFile').files[0];
+      if(!file){ alert('Choose a file'); return; }
+      const fd = new FormData();
+      fd.append('report_id', id);
+      fd.append('report_type', type);
+      fd.append('photo', file);
+      try{
+        const res = await fetch('/upload-photo', { method:'POST', body: fd });
+        const j = await res.json();
+        if(res.ok){ alert('Photo uploaded'); closeModal('photoUploadModal'); loadReports(); }
+        else{ alert(j.error || 'Upload failed'); }
+      }catch(e){ console.error(e); alert('Upload error'); }
+    }
+    async function viewPhotos(id){
+      const arr = await fetchJSON(`/get-photos/${id}`);
+      if(arr.length === 0){ alert('No photos'); return; }
+      const imgs = arr.map(p=>`<img class="w-32 h-32 object-cover rounded" src="data:image/jpeg;base64,${p.image_data}"/>`).join('');
+      const w = window.open('', '_blank');
+      w.document.write(`<title>Photos</title><div style="display:flex;gap:8px;padding:12px">${imgs}</div>`);
+      w.document.close();
+    }
+
+    async function sendReportNotification(id, type){
+      // Minimal helper: pull report to get contact + payload
+      try{
+        let report = null;
+        if(type==='person'){
+          const list = await fetchJSON(`/get_persons?type=all&status=active`);
+          report = list.find(r=>r._id===id);
+        } else {
+          const list = await fetchJSON(`/get_items?type=all&status=active`);
+          report = list.find(r=>r._id===id);
+        }
+        if(!report){ alert('Report not found'); return; }
+
+        const payload = {
+          contact_number: report.contact,
+          match_type: (type==='person') ? 'person' : 'item',
+          match_details: report,
+          similarity_score: 90,
+          report_id: id
+        };
+        const res = await fetch('/notify-match', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const j = await res.json();
+        if(res.ok){ alert('Notification queued'); }
+        else{ alert(j.error || 'Failed'); }
+      }catch(e){ console.error(e); alert('Error sending notification'); }
+    }
+
+    function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+    // Init
+    window.onload = function(){
+      loadStats();
+      showTab('missing-persons');
+      setInterval(loadStats, 60000);
+    }
+  </script>
+</body>
+</html>
